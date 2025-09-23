@@ -1,0 +1,52 @@
+let’s design a combined rollover + retention ISM policy for your 3 index types.
+
+🔹 How It Works (Flow)
+
+New index starts in hot state.
+
+Once it reaches 50GB OR 7 days, ISM rolls over → creates a new index and moves writes there.
+
+The old index just sits there (read-only).
+
+After the old index is 30 days old, ISM transitions it to delete state → logs are deleted.
+==============
+{
+  "policy": {
+    "description": "Rollover at 50GB or 7d, delete after 30d",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [
+          {
+            "rollover": {
+              "min_size": "50gb",
+              "min_index_age": "7d"
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete",
+            "conditions": {
+              "min_index_age": "30d"
+            }
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["kube1*", "fluent_logs1", "app1*"],
+      "priority": 100
+    }
+  }
+}

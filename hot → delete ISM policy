@@ -1,0 +1,62 @@
+Typical policies depend on how long you need logs and how much storage you have:
+
+Hot → Delete (simple log cleanup)
+
+Keep logs for X days, then delete.
+
+Best if you don’t need historical logs.
+
+Hot → Warm → Delete
+
+Hot: actively written logs (short retention, fast storage).
+
+Warm: move to less expensive storage (longer retention).
+
+Delete: purge after a certain period.
+
+Hot → Rollover → Delete
+
+Rollover index when it reaches N GB or M days.
+
+Old rolled-over indexes get deleted after retention period.
+
+Hot → Snapshot → Delete
+
+Take a snapshot before deleting logs (for audit/legal needs).
+
+
+===========================
+simple hot → delete ISM policy (keep logs 7 days, then delete):
+{
+  "policy": {
+    "description": "Delete old logs after 7 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [],
+        "transitions": [
+          {
+            "state_name": "delete",
+            "conditions": {
+              "min_index_age": "7d"
+            }
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": {
+      "index_patterns": ["kube1*", "fluent_logs1", "app1*"],
+      "priority": 100
+    }
+  }
+}

@@ -1,0 +1,77 @@
+---
+- name: Deploy PostgreSQL Docker container
+  hosts: dbservers
+  become: true
+  vars:
+    postgres_image: "postgres:15"           # change tag if you want another version
+    postgres_container_name: "postgres_demo"
+    postgres_user: "demo_user"
+    postgres_password: "demo_pass"          # <-- replace or inject via Ansible Vault / extra-vars
+    postgres_db: "demo_db"
+    postgres_port: 5432
+    pg_data_volume: "/opt/postgres_data"   # host directory for DB files
+  pre_tasks:
+    - name: Ensure apt cache updated (Debian)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure basic dependencies (Debian)
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Docker package (Debian)
+      apt:
+        name: docker.io
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure python3-pip is installed (Debian)
+      apt:
+        name: python3-pip
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install docker Python SDK needed by community.docker modules
+      pip:
+        name: docker
+        executable: pip3
+
+  collections:
+    - community.docker
+
+  tasks:
+    - name: Pull PostgreSQL image
+      community.docker.docker_image:
+        name: "{{ postgres_image }}"
+        source: pull
+
+    - name: Create host directory for PostgreSQL data
+      file:
+        path: "{{ pg_data_volume }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure PostgreSQL container is running
+      community.docker.docker_container:
+        name: "{{ postgres_container_name }}"
+        image: "{{ postgres_image }}"
+        state: started
+        restart_policy: unless-stopped
+        env:
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+          POSTGRES_DB: "{{ postgres_db }}"
+        ports:
+          - "{{ postgres_port }}:5432"
+        volumes:
+          - "{{ pg_data_volume }}:/var/lib/postgresql/data"

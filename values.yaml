@@ -1,0 +1,23 @@
+# Turn off the chart’s built-in config (we’ll mount our own)
+config:
+  enabled: false
+
+extraVolumes:
+  - name: jpuv-config
+    configMap:
+      name: jpuv-fluentbit
+
+extraVolumeMounts:
+  - name: jpuv-config
+    mountPath: /fluent-bit/etc/jpuv.conf
+    subPath: jpuv.conf
+
+# Tell Fluent Bit to use our config file
+extraArgs:
+  - -c
+  - /fluent-bit/etc/jpuv.conf
+
+# (optional) pin the image
+image:
+  repository: cr.fluentbit.io/fluent/fluent-bit
+  tag: 3.0.4
